@@ -40,6 +40,7 @@ interface AuthContextValue {
   ) => Promise<{ error: string | null; needsConfirmation: boolean }>;
   signOut: () => Promise<void>;
   toggleFocusMode: () => Promise<void>;
+  setFocusMode: (on: boolean) => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
@@ -198,16 +199,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setDeskPet(null);
   }, []);
 
-  const toggleFocusMode = useCallback(async () => {
-    if (!user) return;
-    const newFocus = !isFocusing;
-    setIsFocusing(newFocus);
+  const setFocusMode = useCallback(
+    async (on: boolean) => {
+      if (!user) return;
+      setIsFocusing(on);
 
-    await supabase.from("focus_status").upsert(
-      { user_id: user.id, is_focusing: newFocus, updated_at: new Date().toISOString() },
-      { onConflict: "user_id" }
-    );
-  }, [user, isFocusing]);
+      await supabase.from("focus_status").upsert(
+        { user_id: user.id, is_focusing: on, updated_at: new Date().toISOString() },
+        { onConflict: "user_id" }
+      );
+    },
+    [user]
+  );
+
+  const toggleFocusMode = useCallback(async () => {
+    await setFocusMode(!isFocusing);
+  }, [setFocusMode, isFocusing]);
 
   return (
     <AuthContext.Provider
@@ -222,6 +229,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signUp,
         signOut,
         toggleFocusMode,
+        setFocusMode,
         refreshProfile,
       }}
     >

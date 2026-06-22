@@ -5,10 +5,15 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Clock, Play, Pause, Coffee, Users, Zap, Timer } from "lucide-react";
+import { Play, Pause, Coffee, Users, Zap, RotateCcw, Plus, Minus, LogOut, UserPlus } from "lucide-react";
 
 const WORK_MINUTES = 25;
 const BREAK_MINUTES = 5;
+const MIN_MINUTES = 5;
+const MAX_MINUTES = 120;
+const STEP_MINUTES = 5;
+
+type Mode = "idle" | "host" | "guest";
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -16,14 +21,25 @@ function formatTime(seconds: number): string {
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
 
+function initials(name?: string | null): string {
+  return (name ?? "?")
+    .split(" ")
+    .map((n) => n[0])
+    .join("");
+}
+
 export default function Focus() {
-  const { user, profile } = useAuth();
+  const { user, setFocusMode } = useAuth();
   const queryClient = useQueryClient();
 
+  const [durationMinutes, setDurationMinutes] = useState(WORK_MINUTES);
   const [timerSeconds, setTimerSeconds] = useState(WORK_MINUTES * 60);
   const [isRunning, setIsRunning] = useState(false);
   const [phase, setPhase] = useState<"work" | "break">("work");
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [mode, setMode] = useState<Mode>("idle");
+  const [guestEndsAt, setGuestEndsAt] = useState<string | null>(null);
+  const [guestTotal, setGuestTotal] = useState(0);
 
   const { data: focusUsers } = useQuery({
     queryKey: ["focus-users"],
@@ -37,39 +53,89 @@ export default function Focus() {
     refetchInterval: 15_000,
   });
 
+  const { data: activeSessions } = useQuery({
+    queryKey: ["active-pomodoro-sessions"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("pomodoro_sessions")
+        .select(
+          "*, host:profiles!pomodoro_sessions_host_id_fkey(id, name, avatar_url), participants:pomodoro_participants(user_id)"
+        )
+        .eq("status", "active");
+      return data ?? [];
+    },
+    refetchInterval: 10_000,
+  });
+
+  const { data: participants } = useQuery({
+    queryKey: ["pomodoro-participants", sessionId],
+    enabled: !!sessionId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("pomodoro_participants")
+        .select("user_id, user:profiles!pomodoro_participants_user_id_fkey(id, name, avatar_url)")
+        .eq("session_id", sessionId);
+      return data ?? [];
+    },
+    refetchInterval: 8_000,
+  });
+
   // Timer effect
   useEffect(() => {
     if (!isRunning) return;
     const interval = setInterval(() => {
+      // Guest timers are slaved to the host's end time so everyone stays in sync.
+      if (mode === "guest") {
+        if (!guestEndsAt) return;
+        const remaining = Math.max(0, Math.floor((new Date(guestEndsAt).getTime() - Date.now()) / 1000));
+        setTimerSeconds(remaining);
+        if (remaining <= 0) setIsRunning(false);
+        return;
+      }
+
       setTimerSeconds((prev) => {
         if (prev <= 1) {
           // Phase complete
           if (phase === "work") {
             setPhase("break");
             return BREAK_MINUTES * 60;
-          } else {
-            setPhase("work");
-            setIsRunning(false);
-            return WORK_MINUTES * 60;
           }
+          setPhase("work");
+          setIsRunning(false);
+          return durationMinutes * 60;
         }
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [isRunning, phase]);
+  }, [isRunning, phase, mode, guestEndsAt, durationMinutes]);
+
+  const adjustDuration = (delta: number) => {
+    if (mode !== "idle") return;
+    setDurationMinutes((d) => {
+      const next = Math.min(MAX_MINUTES, Math.max(MIN_MINUTES, d + delta));
+      setTimerSeconds(next * 60);
+      return next;
+    });
+  };
 
   const startSession = async () => {
     if (!user) return;
+    const total = durationMinutes * 60;
+    const endsAt = new Date(Date.now() + total * 1000).toISOString();
+
+    setMode("host");
+    setPhase("work");
+    setTimerSeconds(total);
     setIsRunning(true);
 
     const { data } = await supabase
       .from("pomodoro_sessions")
       .insert({
         host_id: user.id,
-        phase,
+        phase: "work",
         started_at: new Date().toISOString(),
-        ends_at: new Date(Date.now() + timerSeconds * 1000).toISOString(),
+        ends_at: endsAt,
         status: "active",
       })
       .select()
@@ -77,23 +143,86 @@ export default function Focus() {
 
     if (data) {
       setSessionId(data.id);
-      // Join as participant
-      await supabase.from("pomodoro_participants").insert({
-        session_id: data.id,
-        user_id: user.id,
-      });
+      await supabase
+        .from("pomodoro_participants")
+        .upsert({ session_id: data.id, user_id: user.id }, { onConflict: "session_id,user_id" });
     }
+
+    await setFocusMode(true);
+    queryClient.invalidateQueries({ queryKey: ["focus-users"] });
+    queryClient.invalidateQueries({ queryKey: ["active-pomodoro-sessions"] });
   };
 
-  const stopSession = () => {
+  const joinSession = async (s: any) => {
+    if (!user || mode !== "idle") return;
+    const ends = s.ends_at ? new Date(s.ends_at).getTime() : Date.now();
+    const start = s.started_at ? new Date(s.started_at).getTime() : ends;
+
+    setGuestTotal(Math.max(0, Math.floor((ends - start) / 1000)));
+    setGuestEndsAt(s.ends_at);
+    setTimerSeconds(Math.max(0, Math.floor((ends - Date.now()) / 1000)));
+    setPhase(s.phase === "break" ? "break" : "work");
+    setSessionId(s.id);
+    setMode("guest");
+    setIsRunning(true);
+
+    await supabase
+      .from("pomodoro_participants")
+      .upsert({ session_id: s.id, user_id: user.id }, { onConflict: "session_id,user_id" });
+
+    await setFocusMode(true);
+    queryClient.invalidateQueries({ queryKey: ["focus-users"] });
+    queryClient.invalidateQueries({ queryKey: ["active-pomodoro-sessions"] });
+    queryClient.invalidateQueries({ queryKey: ["pomodoro-participants"] });
+  };
+
+  const pauseSession = () => setIsRunning(false);
+  const resumeSession = () => setIsRunning(true);
+
+  // Reset (host) / Leave (guest): tears down the session and returns to idle.
+  const endSession = async () => {
+    const wasHost = mode === "host";
+    const sid = sessionId;
+
     setIsRunning(false);
-    if (sessionId) {
-      supabase.from("pomodoro_sessions").update({ status: "completed" }).eq("id", sessionId);
-    }
     setSessionId(null);
+    setMode("idle");
+    setGuestEndsAt(null);
+    setGuestTotal(0);
+    setPhase("work");
+    setTimerSeconds(durationMinutes * 60);
+
+    if (sid && user) {
+      if (wasHost) {
+        await supabase.from("pomodoro_sessions").update({ status: "completed" }).eq("id", sid);
+      }
+      await supabase.from("pomodoro_participants").delete().eq("session_id", sid).eq("user_id", user.id);
+    }
+
+    await setFocusMode(false);
+    queryClient.invalidateQueries({ queryKey: ["focus-users"] });
+    queryClient.invalidateQueries({ queryKey: ["active-pomodoro-sessions"] });
+    queryClient.invalidateQueries({ queryKey: ["pomodoro-participants"] });
   };
 
-  const progress = ((timerSeconds) / (phase === "work" ? WORK_MINUTES * 60 : BREAK_MINUTES * 60)) * 100;
+  const totalSeconds =
+    mode === "guest"
+      ? guestTotal || durationMinutes * 60
+      : phase === "work"
+        ? durationMinutes * 60
+        : BREAK_MINUTES * 60;
+  const progress = totalSeconds > 0 ? (timerSeconds / totalSeconds) * 100 : 0;
+
+  const statusLabel =
+    mode === "idle" ? "READY" : !isRunning ? "PAUSED" : phase === "work" ? "FOCUSING" : "ON BREAK";
+
+  const joinable = (activeSessions ?? []).filter((s: any) => {
+    if (s.id === sessionId) return false;
+    if (s.ends_at && new Date(s.ends_at).getTime() < Date.now()) return false;
+    const ids = (s.participants ?? []).map((p: any) => p.user_id);
+    if (user && ids.includes(user.id)) return false;
+    return true;
+  });
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -109,7 +238,7 @@ export default function Focus() {
           {phase === "work" ? (
             <>
               <Zap className="w-3.5 h-3.5 text-indigo-400" />
-              Focus Session
+              {mode === "guest" ? "Group Focus Session" : "Focus Session"}
             </>
           ) : (
             <>
@@ -137,41 +266,174 @@ export default function Focus() {
               style={{ transition: "stroke-dashoffset 1s linear" }}
             />
           </svg>
-          <span className="absolute inset-0 flex items-center justify-center font-display text-4xl font-bold text-foreground">
-            {formatTime(timerSeconds)}
-          </span>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="font-display text-4xl font-bold text-foreground">{formatTime(timerSeconds)}</span>
+            <span
+              className={`mt-1 text-[11px] font-semibold tracking-widest ${
+                mode === "idle" || !isRunning ? "text-muted-foreground" : "text-indigo-400"
+              }`}
+            >
+              {statusLabel}
+            </span>
+          </div>
         </div>
+
+        {/* Duration stepper (idle only) */}
+        {mode === "idle" && (
+          <div className="flex items-center justify-center gap-4 mb-6">
+            <Button
+              variant="outline"
+              size="icon"
+              className="rounded-xl"
+              onClick={() => adjustDuration(-STEP_MINUTES)}
+              disabled={durationMinutes <= MIN_MINUTES}
+            >
+              <Minus className="w-4 h-4" />
+            </Button>
+            <div className="min-w-[88px]">
+              <div className="font-display text-lg font-bold text-foreground">{durationMinutes} min</div>
+              <div className="text-xs text-muted-foreground">Session length</div>
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              className="rounded-xl"
+              onClick={() => adjustDuration(STEP_MINUTES)}
+              disabled={durationMinutes >= MAX_MINUTES}
+            >
+              <Plus className="w-4 h-4" />
+            </Button>
+          </div>
+        )}
 
         {/* Controls */}
         <div className="flex items-center justify-center gap-3">
-          {!isRunning ? (
-            <Button
-              onClick={startSession}
-              className="h-12 px-6 rounded-xl gap-2"
-            >
+          {mode === "idle" && (
+            <Button onClick={startSession} className="h-12 px-6 rounded-xl gap-2">
               <Play className="w-4 h-4" />
-              {phase === "work" ? `Start ${WORK_MINUTES}m Focus` : `Start ${BREAK_MINUTES}m Break`}
+              Start {durationMinutes}m Focus
             </Button>
-          ) : (
-            <Button
-              onClick={stopSession}
-              variant="outline"
-              className="h-12 px-6 rounded-xl gap-2"
-            >
-              <Pause className="w-4 h-4" />
-              End Session
+          )}
+
+          {mode === "host" && (
+            <>
+              {isRunning ? (
+                <Button onClick={pauseSession} variant="outline" className="h-12 px-6 rounded-xl gap-2">
+                  <Pause className="w-4 h-4" />
+                  Pause
+                </Button>
+              ) : (
+                <Button onClick={resumeSession} className="h-12 px-6 rounded-xl gap-2">
+                  <Play className="w-4 h-4" />
+                  Resume
+                </Button>
+              )}
+              <Button
+                onClick={endSession}
+                variant="outline"
+                size="icon"
+                className="h-12 w-12 rounded-xl"
+                title="Reset & end session"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </Button>
+            </>
+          )}
+
+          {mode === "guest" && (
+            <Button onClick={endSession} variant="outline" className="h-12 px-6 rounded-xl gap-2">
+              <LogOut className="w-4 h-4" />
+              Leave session
             </Button>
           )}
         </div>
+
+        {/* Participants in the current session */}
+        {mode !== "idle" && participants && participants.length > 0 && (
+          <div className="mt-6 pt-5 border-t border-border/20">
+            <p className="text-xs text-muted-foreground mb-3">
+              {participants.length} {participants.length === 1 ? "person" : "people"} in this session
+            </p>
+            <div className="flex items-center justify-center -space-x-2">
+              {(participants as any[]).map((p: any) => (
+                <Avatar key={p.user_id} className="w-8 h-8 ring-2 ring-card">
+                  <AvatarImage src={p.user?.avatar_url} />
+                  <AvatarFallback className="bg-indigo-500/20 text-indigo-400 text-xs">
+                    {initials(p.user?.name)}
+                  </AvatarFallback>
+                </Avatar>
+              ))}
+            </div>
+          </div>
+        )}
       </Card>
+
+      {/* Group sessions to join */}
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <UserPlus className="w-4 h-4 text-indigo-400" />
+          <h3 className="font-display text-sm font-semibold text-foreground">Group sessions</h3>
+          <span className="text-xs text-muted-foreground">({joinable.length})</span>
+        </div>
+
+        {joinable.length > 0 ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {joinable.map((s: any) => {
+              const count = (s.participants ?? []).length;
+              const remaining = s.ends_at
+                ? Math.max(0, Math.floor((new Date(s.ends_at).getTime() - Date.now()) / 1000))
+                : 0;
+              return (
+                <Card
+                  key={s.id}
+                  className="p-4 bg-card/60 border-border/30 shadow-sm flex items-center justify-between gap-3"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Avatar className="w-9 h-9 ring-2 ring-indigo-500/30 shrink-0">
+                      <AvatarImage src={s.host?.avatar_url} />
+                      <AvatarFallback className="bg-indigo-500/20 text-indigo-400 text-xs">
+                        {initials(s.host?.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">
+                        {s.host?.name ?? "Someone"}'s session
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatTime(remaining)} left · {count} {count === 1 ? "person" : "people"}
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="rounded-xl gap-1.5 shrink-0"
+                    onClick={() => joinSession(s)}
+                    disabled={mode !== "idle"}
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    Join
+                  </Button>
+                </Card>
+              );
+            })}
+          </div>
+        ) : (
+          <Card className="p-6 bg-card/40 border-border/20 text-center">
+            <Users className="w-6 h-6 text-muted-foreground/40 mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">
+              {mode === "idle"
+                ? "No group sessions running. Start one and the team can join you."
+                : "No other sessions to join right now."}
+            </p>
+          </Card>
+        )}
+      </div>
 
       {/* Who's focusing */}
       <div>
         <div className="flex items-center gap-2 mb-4">
           <Users className="w-4 h-4 text-indigo-400" />
-          <h3 className="font-display text-sm font-semibold text-foreground">
-            Who's in focus right now
-          </h3>
+          <h3 className="font-display text-sm font-semibold text-foreground">Who's in focus right now</h3>
           <span className="text-xs text-muted-foreground">({focusUsers?.length ?? 0})</span>
         </div>
 
@@ -186,7 +448,7 @@ export default function Focus() {
                   <Avatar className="w-8 h-8 ring-2 ring-indigo-500/30">
                     <AvatarImage src={fu.user?.avatar_url} />
                     <AvatarFallback className="bg-indigo-500/20 text-indigo-400 text-xs">
-                      {(fu.user?.name ?? "?").split(" ").map((n: string) => n[0]).join("")}
+                      {initials(fu.user?.name)}
                     </AvatarFallback>
                   </Avatar>
                   <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-indigo-400 border-2 border-card" />
