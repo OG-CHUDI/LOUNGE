@@ -1,0 +1,227 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Lounge Design System
+ * ─────────────────────
+ * Dark, cosy "members' lounge" aesthetic.
+ * Three lounges vary accent warmth: Chill (warmest), Learning (bright teal), Focus (deepest).
+ */
+
+@layer base {
+  :root {
+    /* Core palette — dark theme (default) */
+    --lounge-bg: 192 67% 14%;        /* #0c343d */
+    --lounge-surface: 191 66% 22%;   /* #134f5c */
+    --lounge-surface2: 0 0% 16%;     /* #282828 */
+    --lounge-text: 0 0% 93%;         /* #eeeeee */
+    --lounge-muted: 0 7% 52%;        /* #8b7e7e */
+
+    /* Accent — varies by lounge */
+    --lounge-accent: 180 70% 45%;
+    --lounge-accent-foreground: 0 0% 93%;
+    --lounge-accent-warm: 0 7% 52%;
+
+    /* shadcn/ui mapping */
+    --background: var(--lounge-bg);
+    --foreground: var(--lounge-text);
+
+    --card: var(--lounge-surface);
+    --card-foreground: var(--lounge-text);
+
+    --popover: var(--lounge-surface2);
+    --popover-foreground: var(--lounge-text);
+
+    --primary: 180 70% 45%;
+    --primary-foreground: 0 0% 7%;
+
+    --secondary: var(--lounge-surface2);
+    --secondary-foreground: var(--lounge-text);
+
+    --muted: var(--lounge-muted);
+    --muted-foreground: 0 0% 65%;
+
+    --accent: var(--lounge-accent);
+    --accent-foreground: var(--lounge-text);
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 191 30% 28%;
+    --input: 191 30% 25%;
+    --ring: 180 70% 45%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 192 67% 10%;
+    --sidebar-foreground: 0 0% 85%;
+    --sidebar-primary: 180 70% 45%;
+    --sidebar-primary-foreground: 0 0% 7%;
+    --sidebar-accent: 191 40% 18%;
+    --sidebar-accent-foreground: 0 0% 93%;
+    --sidebar-border: 191 40% 22%;
+    --sidebar-ring: 180 70% 45%;
+  }
+
+  /* Light theme — flipped palette */
+  .light {
+    --lounge-bg: 0 0% 93%;          /* #eeeeee → background */
+    --lounge-surface: 0 0% 96%;
+    --lounge-surface2: 0 0% 88%;
+    --lounge-text: 192 67% 14%;      /* #0c343d → text */
+    --lounge-muted: 0 0% 50%;
+
+    --background: var(--lounge-bg);
+    --foreground: var(--lounge-text);
+
+    --card: var(--lounge-surface);
+    --card-foreground: var(--lounge-text);
+
+    --popover: 0 0% 100%;
+    --popover-foreground: var(--lounge-text);
+
+    --primary: 192 67% 14%;
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: var(--lounge-surface2);
+    --secondary-foreground: var(--lounge-text);
+
+    --muted: 0 0% 60%;
+    --muted-foreground: 0 0% 40%;
+
+    --accent: 191 66% 22%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 0 0% 80%;
+    --input: 0 0% 85%;
+    --ring: 192 67% 14%;
+
+    --sidebar-background: 0 0% 90%;
+    --sidebar-foreground: 192 67% 14%;
+    --sidebar-primary: 192 67% 14%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 0 0% 84%;
+    --sidebar-accent-foreground: 192 67% 14%;
+    --sidebar-border: 0 0% 80%;
+    --sidebar-ring: 192 67% 14%;
+  }
+
+  /* Chill Lounge — warm accent, uses muted as secondary */
+  .lounge-chill {
+    --lounge-accent: 10 50% 55%;
+    --primary: 10 50% 55%;
+    --ring: 10 50% 55%;
+    --sidebar-primary: 10 50% 55%;
+    --sidebar-ring: 10 50% 55%;
+  }
+
+  /* Learning Lounge — brightest teal */
+  .lounge-learn {
+    --lounge-accent: 180 80% 50%;
+    --primary: 180 80% 50%;
+    --ring: 180 80% 50%;
+    --sidebar-primary: 180 80% 50%;
+    --sidebar-ring: 180 80% 50%;
+  }
+
+  /* Focus Lounge — deepest, fewest flourishes */
+  .lounge-focus {
+    --lounge-accent: 200 30% 35%;
+    --primary: 200 30% 35%;
+    --ring: 200 30% 35%;
+    --sidebar-primary: 200 30% 35%;
+    --sidebar-ring: 200 30% 35%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Display face for lounge titles and big numbers */
+  .font-display {
+    font-family: "Space Grotesk", "Inter", system-ui, sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  /* Smooth transitions everywhere */
+  * {
+    transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 200ms;
+  }
+}
+
+@layer components {
+  /* Lounge card — elevated panel with soft shadow and hover lift */
+  .lounge-card {
+    @apply rounded-2xl border border-border/30 bg-card/80 shadow-lg shadow-black/10 backdrop-blur-sm;
+    @apply hover:shadow-xl hover:shadow-black/20 hover:-translate-y-0.5;
+  }
+
+  /* Glass button — the primary CTA style */
+  .btn-glass {
+    @apply inline-flex items-center justify-center rounded-xl font-medium;
+    @apply bg-primary text-primary-foreground;
+    @apply hover:brightness-110 active:scale-[0.97];
+    @apply transition-all duration-200 ease-out;
+  }
+
+  /* Subtle surface variant */
+  .surface-inset {
+    @apply rounded-xl bg-lounge-surface2/60 border border-border/20;
+  }
+
+  /* Gradient text for special emphasis */
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent;
+  }
+}
+
+@layer utilities {
+  /* Lounge-specific utility classes */
+  .bg-lounge-bg       { background-color: hsl(var(--lounge-bg)); }
+  .bg-lounge-surface  { background-color: hsl(var(--lounge-surface)); }
+  .bg-lounge-surface2 { background-color: hsl(var(--lounge-surface2)); }
+  .text-lounge-text   { color: hsl(var(--lounge-text)); }
+  .text-lounge-muted  { color: hsl(var(--lounge-muted)); }
+  .border-lounge      { border-color: hsl(var(--border) / 0.3); }
+
+  /* Animated glow for focus mode */
+  .glow-teal {
+    box-shadow: 0 0 24px 4px hsl(180 70% 45% / 0.3), 0 0 48px 8px hsl(180 70% 45% / 0.12);
+  }
+
+  .glow-warm {
+    box-shadow: 0 0 24px 4px hsl(10 50% 55% / 0.3), 0 0 48px 8px hsl(10 50% 55% / 0.12);
+  }
+
+  /* Scrollbar styling */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted) / 0.3) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted) / 0.3);
+    border-radius: 3px;
+  }
+}
