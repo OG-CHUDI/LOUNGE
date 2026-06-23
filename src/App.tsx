@@ -25,6 +25,10 @@ import LearnSkillSwap from "@/pages/LearnSkillSwap";
 import LearnLeaderboard from "@/pages/LearnLeaderboard";
 import LearnAma from "@/pages/LearnAma";
 import Focus from "@/pages/Focus";
+import Airwaves from "@/pages/Airwaves";
+import AirwavesVoiceNotes from "@/pages/AirwavesVoiceNotes";
+import AirwavesSoundboard from "@/pages/AirwavesSoundboard";
+import AirwavesNameTags from "@/pages/AirwavesNameTags";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -92,6 +96,10 @@ function AppRoutes() {
         <Route path="learn/leaderboard" element={<LearnLeaderboard />} />
         <Route path="learn/ama" element={<LearnAma />} />
         <Route path="focus" element={<Focus />} />
+        <Route path="airwaves" element={<Airwaves />} />
+        <Route path="airwaves/voice-notes" element={<AirwavesVoiceNotes />} />
+        <Route path="airwaves/soundboard" element={<AirwavesSoundboard />} />
+        <Route path="airwaves/name-tags" element={<AirwavesNameTags />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

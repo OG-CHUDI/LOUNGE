@@ -8,6 +8,7 @@ import {
   Coffee,
   GraduationCap,
   Target,
+  Radio,
   Search,
   SunMoon,
   Lamp,
@@ -28,6 +29,7 @@ const NAV_ITEMS = [
   { path: "/chill", icon: Coffee, label: "Chill Lounge", lounge: "chill" as const },
   { path: "/learn", icon: GraduationCap, label: "Learning Lounge", lounge: "learn" as const },
   { path: "/focus", icon: Target, label: "Focus Lounge", lounge: "focus" as const },
+  { path: "/airwaves", icon: Radio, label: "Airwaves Lounge" },
 ] as const;
 
 const PAGE_TITLES: Record<string, string> = {
@@ -46,6 +48,10 @@ const PAGE_TITLES: Record<string, string> = {
   "/learn/leaderboard": "Brain Teaser Leaderboard",
   "/learn/ama": "AMA Archive",
   "/focus": "Focus Lounge",
+  "/airwaves": "Airwaves Lounge",
+  "/airwaves/voice-notes": "Voice Notes",
+  "/airwaves/soundboard": "Soundboard",
+  "/airwaves/name-tags": "Name Tags",
 };
 
 function getLoungeFromPath(pathname: string): string | null {
