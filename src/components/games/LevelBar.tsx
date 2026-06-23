@@ -21,7 +21,7 @@ export default function LevelBar({ level, unlocked, hint, onSelect }: LevelBarPr
         </span>
         {hint && <span className="text-muted-foreground">{hint}</span>}
       </div>
-      <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+      <div className="flex flex-wrap gap-1.5">
         {Array.from({ length: TOTAL_LEVELS }, (_, i) => i + 1).map((n) => {
           const locked = n > unlocked;
           const done = n < unlocked;

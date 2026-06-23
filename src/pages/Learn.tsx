@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { GraduationCap, ArrowRightLeft, Trophy, MessageCircle } from "lucide-react";
+import { GraduationCap, ArrowRightLeft, Trophy, MessageCircle, Presentation } from "lucide-react";
 
 const LEARN_TILES = [
   {
@@ -43,6 +43,16 @@ const LEARN_TILES = [
     iconColor: "text-purple-400",
     accent: "bg-purple-500/10",
     stat: "1 active",
+  },
+  {
+    path: "/learn/stage",
+    icon: Presentation,
+    title: "The Stage",
+    description: "Show what you built & book demo slots",
+    color: "from-teal-500/10 to-emerald-500/5",
+    iconColor: "text-teal-400",
+    accent: "bg-teal-500/10",
+    stat: "Showcase & demos",
   },
 ];
 

@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Coffee, Gamepad2, Music, Palette, PawPrint, Image } from "lucide-react";
+import { Coffee, Gamepad2, Music, Palette, PawPrint, Image, Flame } from "lucide-react";
 
 const CHILL_TILES = [
   {
@@ -53,6 +53,16 @@ const CHILL_TILES = [
     iconColor: "text-cyan-400",
     accent: "bg-cyan-500/10",
     stat: "3 memes",
+  },
+  {
+    path: "/chill/hot-takes",
+    icon: Flame,
+    title: "Hot Takes",
+    description: "Spicy opinions, voted on by the team",
+    color: "from-orange-500/10 to-red-500/5",
+    iconColor: "text-orange-400",
+    accent: "bg-orange-500/10",
+    stat: "Agree or disagree",
   },
 ];
 

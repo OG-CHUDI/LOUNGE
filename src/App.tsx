@@ -15,8 +15,10 @@ import ChillMusic from "@/pages/ChillMusic";
 import ChillCanvas from "@/pages/ChillCanvas";
 import ChillPets from "@/pages/ChillPets";
 import ChillMemes from "@/pages/ChillMemes";
+import ChillHotTakes from "@/pages/ChillHotTakes";
 import Learn from "@/pages/Learn";
 import LearnCourses from "@/pages/LearnCourses";
+import LearnStage from "@/pages/LearnStage";
 import CourseEditor from "@/pages/CourseEditor";
 import CoursePlayer from "@/pages/CoursePlayer";
 import LearnSkillSwap from "@/pages/LearnSkillSwap";
@@ -79,8 +81,10 @@ function AppRoutes() {
         <Route path="chill/canvas" element={<ChillCanvas />} />
         <Route path="chill/pets" element={<ChillPets />} />
         <Route path="chill/memes" element={<ChillMemes />} />
+        <Route path="chill/hot-takes" element={<ChillHotTakes />} />
         <Route path="learn" element={<Learn />} />
         <Route path="learn/courses" element={<LearnCourses />} />
+        <Route path="learn/stage" element={<LearnStage />} />
         <Route path="learn/courses/new" element={<CourseEditor />} />
         <Route path="learn/courses/:id" element={<CoursePlayer />} />
         <Route path="learn/courses/:id/edit" element={<CourseEditor />} />
