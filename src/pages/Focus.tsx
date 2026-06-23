@@ -1,20 +1,13 @@
-import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Play, Pause, Coffee, Users, Zap, RotateCcw, Plus, Minus, LogOut, UserPlus, User } from "lucide-react";
-import { sendFocusAlert } from "@/lib/focusAlerts";
-
-const WORK_MINUTES = 25;
-const BREAK_MINUTES = 5;
-const MIN_MINUTES = 5;
-const MAX_MINUTES = 120;
-const STEP_MINUTES = 5;
-
-type Mode = "idle" | "host" | "guest" | "solo";
+import {
+  useFocus, BREAK_MINUTES, MIN_MINUTES, MAX_MINUTES, STEP_MINUTES,
+} from "@/components/focus/FocusProvider";
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -30,17 +23,11 @@ function initials(name?: string | null): string {
 }
 
 export default function Focus() {
-  const { user, profile, setFocusMode } = useAuth();
-  const queryClient = useQueryClient();
-
-  const [durationMinutes, setDurationMinutes] = useState(WORK_MINUTES);
-  const [timerSeconds, setTimerSeconds] = useState(WORK_MINUTES * 60);
-  const [isRunning, setIsRunning] = useState(false);
-  const [phase, setPhase] = useState<"work" | "break">("work");
-  const [sessionId, setSessionId] = useState<string | null>(null);
-  const [mode, setMode] = useState<Mode>("idle");
-  const [guestEndsAt, setGuestEndsAt] = useState<string | null>(null);
-  const [guestTotal, setGuestTotal] = useState(0);
+  const { user } = useAuth();
+  const {
+    mode, phase, isRunning, timerSeconds, durationMinutes, sessionId, guestTotal,
+    adjustDuration, startSolo, startGroup, joinSession, pause, resume, end,
+  } = useFocus();
 
   const { data: focusUsers } = useQuery({
     queryKey: ["focus-users"],
@@ -80,150 +67,6 @@ export default function Focus() {
     },
     refetchInterval: 8_000,
   });
-
-  // Timer effect
-  useEffect(() => {
-    if (!isRunning) return;
-    const interval = setInterval(() => {
-      // Guest timers are slaved to the host's end time so everyone stays in sync.
-      if (mode === "guest") {
-        if (!guestEndsAt) return;
-        const remaining = Math.max(0, Math.floor((new Date(guestEndsAt).getTime() - Date.now()) / 1000));
-        setTimerSeconds(remaining);
-        if (remaining <= 0) setIsRunning(false);
-        return;
-      }
-
-      setTimerSeconds((prev) => {
-        if (prev <= 1) {
-          // Phase complete
-          if (phase === "work") {
-            setPhase("break");
-            return BREAK_MINUTES * 60;
-          }
-          setPhase("work");
-          setIsRunning(false);
-          return durationMinutes * 60;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [isRunning, phase, mode, guestEndsAt, durationMinutes]);
-
-  const adjustDuration = (delta: number) => {
-    if (mode !== "idle") return;
-    setDurationMinutes((d) => {
-      const next = Math.min(MAX_MINUTES, Math.max(MIN_MINUTES, d + delta));
-      setTimerSeconds(next * 60);
-      return next;
-    });
-  };
-
-  // Solo: focus mode on, local timer, no shared session and no team alert.
-  const startSolo = async () => {
-    if (!user) return;
-    setMode("solo");
-    setPhase("work");
-    setTimerSeconds(durationMinutes * 60);
-    setIsRunning(true);
-    await setFocusMode(true);
-    queryClient.invalidateQueries({ queryKey: ["focus-users"] });
-  };
-
-  const startSession = async () => {
-    if (!user) return;
-    const total = durationMinutes * 60;
-    const endsAt = new Date(Date.now() + total * 1000).toISOString();
-
-    setMode("host");
-    setPhase("work");
-    setTimerSeconds(total);
-    setIsRunning(true);
-
-    const { data } = await supabase
-      .from("pomodoro_sessions")
-      .insert({
-        host_id: user.id,
-        phase: "work",
-        started_at: new Date().toISOString(),
-        ends_at: endsAt,
-        status: "active",
-      })
-      .select()
-      .single();
-
-    if (data) {
-      setSessionId(data.id);
-      await supabase
-        .from("pomodoro_participants")
-        .upsert({ session_id: data.id, user_id: user.id }, { onConflict: "session_id,user_id" });
-
-      // Open & ephemeral: ping everyone currently in the app — no notification.
-      sendFocusAlert({
-        hostName: profile?.name ?? "Someone",
-        hostId: user.id,
-        sessionId: data.id,
-        durationMinutes,
-      });
-    }
-
-    await setFocusMode(true);
-    queryClient.invalidateQueries({ queryKey: ["focus-users"] });
-    queryClient.invalidateQueries({ queryKey: ["active-pomodoro-sessions"] });
-  };
-
-  const joinSession = async (s: any) => {
-    if (!user || mode !== "idle") return;
-    const ends = s.ends_at ? new Date(s.ends_at).getTime() : Date.now();
-    const start = s.started_at ? new Date(s.started_at).getTime() : ends;
-
-    setGuestTotal(Math.max(0, Math.floor((ends - start) / 1000)));
-    setGuestEndsAt(s.ends_at);
-    setTimerSeconds(Math.max(0, Math.floor((ends - Date.now()) / 1000)));
-    setPhase(s.phase === "break" ? "break" : "work");
-    setSessionId(s.id);
-    setMode("guest");
-    setIsRunning(true);
-
-    await supabase
-      .from("pomodoro_participants")
-      .upsert({ session_id: s.id, user_id: user.id }, { onConflict: "session_id,user_id" });
-
-    await setFocusMode(true);
-    queryClient.invalidateQueries({ queryKey: ["focus-users"] });
-    queryClient.invalidateQueries({ queryKey: ["active-pomodoro-sessions"] });
-    queryClient.invalidateQueries({ queryKey: ["pomodoro-participants"] });
-  };
-
-  const pauseSession = () => setIsRunning(false);
-  const resumeSession = () => setIsRunning(true);
-
-  // Reset (host) / Leave (guest): tears down the session and returns to idle.
-  const endSession = async () => {
-    const wasHost = mode === "host";
-    const sid = sessionId;
-
-    setIsRunning(false);
-    setSessionId(null);
-    setMode("idle");
-    setGuestEndsAt(null);
-    setGuestTotal(0);
-    setPhase("work");
-    setTimerSeconds(durationMinutes * 60);
-
-    if (sid && user) {
-      if (wasHost) {
-        await supabase.from("pomodoro_sessions").update({ status: "completed" }).eq("id", sid);
-      }
-      await supabase.from("pomodoro_participants").delete().eq("session_id", sid).eq("user_id", user.id);
-    }
-
-    await setFocusMode(false);
-    queryClient.invalidateQueries({ queryKey: ["focus-users"] });
-    queryClient.invalidateQueries({ queryKey: ["active-pomodoro-sessions"] });
-    queryClient.invalidateQueries({ queryKey: ["pomodoro-participants"] });
-  };
 
   const totalSeconds =
     mode === "guest"
@@ -334,7 +177,7 @@ export default function Focus() {
                 <User className="w-4 h-4" />
                 Solo focus
               </Button>
-              <Button onClick={startSession} className="h-12 px-5 rounded-xl gap-2">
+              <Button onClick={startGroup} className="h-12 px-5 rounded-xl gap-2">
                 <Users className="w-4 h-4" />
                 Group session
               </Button>
@@ -344,18 +187,18 @@ export default function Focus() {
           {(mode === "host" || mode === "solo") && (
             <>
               {isRunning ? (
-                <Button onClick={pauseSession} variant="outline" className="h-12 px-6 rounded-xl gap-2">
+                <Button onClick={pause} variant="outline" className="h-12 px-6 rounded-xl gap-2">
                   <Pause className="w-4 h-4" />
                   Pause
                 </Button>
               ) : (
-                <Button onClick={resumeSession} className="h-12 px-6 rounded-xl gap-2">
+                <Button onClick={resume} className="h-12 px-6 rounded-xl gap-2">
                   <Play className="w-4 h-4" />
                   Resume
                 </Button>
               )}
               <Button
-                onClick={endSession}
+                onClick={end}
                 variant="outline"
                 size="icon"
                 className="h-12 w-12 rounded-xl"
@@ -367,7 +210,7 @@ export default function Focus() {
           )}
 
           {mode === "guest" && (
-            <Button onClick={endSession} variant="outline" className="h-12 px-6 rounded-xl gap-2">
+            <Button onClick={end} variant="outline" className="h-12 px-6 rounded-xl gap-2">
               <LogOut className="w-4 h-4" />
               Leave session
             </Button>
@@ -376,7 +219,7 @@ export default function Focus() {
 
         {mode === "idle" && (
           <p className="mt-3 text-xs text-muted-foreground">
-            Solo keeps it to you. A <span className="text-foreground font-medium">group session</span> is open to the team — everyone in the app gets a quick heads-up and can join your timer.
+            Solo keeps it to you. A <span className="text-foreground font-medium">group session</span> is open to the team — everyone in the app gets a quick heads-up and can join your timer. Your timer keeps running as you move around the app.
           </p>
         )}
 

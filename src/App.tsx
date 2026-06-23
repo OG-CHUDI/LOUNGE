@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AppShell from "@/components/AppShell";
 import { MusicProvider } from "@/components/music/MusicProvider";
+import { FocusProvider } from "@/components/focus/FocusProvider";
 import Login from "@/pages/Login";
 import Home from "@/pages/Home";
 import Chill from "@/pages/Chill";
@@ -98,11 +99,13 @@ const App = () => (
     <TooltipProvider>
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AuthProvider>
-          <MusicProvider>
-            <Toaster />
-            <Sonner />
-            <AppRoutes />
-          </MusicProvider>
+          <FocusProvider>
+            <MusicProvider>
+              <Toaster />
+              <Sonner />
+              <AppRoutes />
+            </MusicProvider>
+          </FocusProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
