@@ -5,7 +5,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Play, Pause, Coffee, Users, Zap, RotateCcw, Plus, Minus, LogOut, UserPlus } from "lucide-react";
+import { Play, Pause, Coffee, Users, Zap, RotateCcw, Plus, Minus, LogOut, UserPlus, User } from "lucide-react";
+import { sendFocusAlert } from "@/lib/focusAlerts";
 
 const WORK_MINUTES = 25;
 const BREAK_MINUTES = 5;
@@ -13,7 +14,7 @@ const MIN_MINUTES = 5;
 const MAX_MINUTES = 120;
 const STEP_MINUTES = 5;
 
-type Mode = "idle" | "host" | "guest";
+type Mode = "idle" | "host" | "guest" | "solo";
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60);
@@ -29,7 +30,7 @@ function initials(name?: string | null): string {
 }
 
 export default function Focus() {
-  const { user, setFocusMode } = useAuth();
+  const { user, profile, setFocusMode } = useAuth();
   const queryClient = useQueryClient();
 
   const [durationMinutes, setDurationMinutes] = useState(WORK_MINUTES);
@@ -119,6 +120,17 @@ export default function Focus() {
     });
   };
 
+  // Solo: focus mode on, local timer, no shared session and no team alert.
+  const startSolo = async () => {
+    if (!user) return;
+    setMode("solo");
+    setPhase("work");
+    setTimerSeconds(durationMinutes * 60);
+    setIsRunning(true);
+    await setFocusMode(true);
+    queryClient.invalidateQueries({ queryKey: ["focus-users"] });
+  };
+
   const startSession = async () => {
     if (!user) return;
     const total = durationMinutes * 60;
@@ -146,6 +158,14 @@ export default function Focus() {
       await supabase
         .from("pomodoro_participants")
         .upsert({ session_id: data.id, user_id: user.id }, { onConflict: "session_id,user_id" });
+
+      // Open & ephemeral: ping everyone currently in the app — no notification.
+      sendFocusAlert({
+        hostName: profile?.name ?? "Someone",
+        hostId: user.id,
+        sessionId: data.id,
+        durationMinutes,
+      });
     }
 
     await setFocusMode(true);
@@ -238,7 +258,7 @@ export default function Focus() {
           {phase === "work" ? (
             <>
               <Zap className="w-3.5 h-3.5 text-indigo-400" />
-              {mode === "guest" ? "Group Focus Session" : "Focus Session"}
+              {mode === "host" || mode === "guest" ? "Group Focus Session" : "Focus Session"}
             </>
           ) : (
             <>
@@ -309,13 +329,19 @@ export default function Focus() {
         {/* Controls */}
         <div className="flex items-center justify-center gap-3">
           {mode === "idle" && (
-            <Button onClick={startSession} className="h-12 px-6 rounded-xl gap-2">
-              <Play className="w-4 h-4" />
-              Start {durationMinutes}m Focus
-            </Button>
+            <>
+              <Button onClick={startSolo} variant="outline" className="h-12 px-5 rounded-xl gap-2">
+                <User className="w-4 h-4" />
+                Solo focus
+              </Button>
+              <Button onClick={startSession} className="h-12 px-5 rounded-xl gap-2">
+                <Users className="w-4 h-4" />
+                Group session
+              </Button>
+            </>
           )}
 
-          {mode === "host" && (
+          {(mode === "host" || mode === "solo") && (
             <>
               {isRunning ? (
                 <Button onClick={pauseSession} variant="outline" className="h-12 px-6 rounded-xl gap-2">
@@ -333,7 +359,7 @@ export default function Focus() {
                 variant="outline"
                 size="icon"
                 className="h-12 w-12 rounded-xl"
-                title="Reset & end session"
+                title={mode === "host" ? "Reset & end session" : "End session"}
               >
                 <RotateCcw className="w-4 h-4" />
               </Button>
@@ -347,6 +373,12 @@ export default function Focus() {
             </Button>
           )}
         </div>
+
+        {mode === "idle" && (
+          <p className="mt-3 text-xs text-muted-foreground">
+            Solo keeps it to you. A <span className="text-foreground font-medium">group session</span> is open to the team — everyone in the app gets a quick heads-up and can join your timer.
+          </p>
+        )}
 
         {/* Participants in the current session */}
         {mode !== "idle" && participants && participants.length > 0 && (

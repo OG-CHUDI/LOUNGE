@@ -20,6 +20,8 @@ import MiniPlayer from "@/components/music/MiniPlayer";
 import AnimatedBackground from "@/components/AnimatedBackground";
 import NotificationBell from "@/components/NotificationBell";
 import { BackgroundProvider } from "@/lib/background";
+import { subscribeFocusAlerts } from "@/lib/focusAlerts";
+import { toast } from "sonner";
 
 const NAV_ITEMS = [
   { path: "/", icon: Home, label: "Home" },
@@ -52,7 +54,7 @@ function getLoungeFromPath(pathname: string): string | null {
 }
 
 export default function AppShell() {
-  const { profile, deskPet, isFocusing, toggleFocusMode, signOut } = useAuth();
+  const { user, profile, deskPet, isFocusing, toggleFocusMode, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [theme, setTheme] = useState<"dark" | "light">("dark");
@@ -74,6 +76,19 @@ export default function AppShell() {
   useEffect(() => {
     document.documentElement.classList.toggle("light", theme === "light");
   }, [theme]);
+
+  // Transient heads-up when a teammate opens a group focus session.
+  useEffect(() => {
+    if (!user) return;
+    return subscribeFocusAlerts((alert) => {
+      if (alert.hostId === user.id) return; // never alert the host about their own session
+      toast(`${alert.hostName} started a group focus session`, {
+        description: `${alert.durationMinutes}m · jump in to focus together`,
+        duration: 6000,
+        action: { label: "Join", onClick: () => navigate("/focus") },
+      });
+    });
+  }, [user, navigate]);
 
   const handleToggleFocus = async () => {
     await toggleFocusMode();

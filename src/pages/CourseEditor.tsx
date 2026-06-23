@@ -16,6 +16,7 @@ import {
   type QuestionOption,
   type SectionKind,
 } from "@/lib/courses";
+import { generateCourseDraft, type GeneratedQuestion } from "@/lib/ai";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -79,6 +80,25 @@ function newSection(): DraftSection {
   return { key: uid(), title: "", kind: "text", body: "", media_url: null, embed_url: null, duration_seconds: null };
 }
 
+// Convert an AI-generated question into the editor's draft shape.
+function mapGeneratedQuestion(g: GeneratedQuestion): DraftQuestion {
+  const base = { key: uid(), prompt: g.prompt ?? "", explanation: g.explanation ?? "" };
+  if (g.kind === "single" || g.kind === "multi") {
+    const options = (g.options ?? []).map((text) => ({ id: uid(), text }));
+    let correct: DraftQuestion["correct"] = null;
+    if (g.kind === "single" && typeof g.answer === "number") {
+      correct = options[g.answer]?.id ?? null;
+    } else if (g.kind === "multi" && Array.isArray(g.answer)) {
+      correct = g.answer.map((i) => options[i]?.id).filter(Boolean) as string[];
+    }
+    return { ...base, kind: g.kind, options, correct };
+  }
+  if (g.kind === "boolean") {
+    return { ...base, kind: "boolean", options: [], correct: typeof g.answer === "boolean" ? g.answer : null };
+  }
+  return { ...base, kind: "short", options: [], correct: null };
+}
+
 export default function CourseEditor() {
   const { id } = useParams();
   const isNew = !id;
@@ -98,6 +118,51 @@ export default function CourseEditor() {
   const [addingCategory, setAddingCategory] = useState(false);
   const [newCategory, setNewCategory] = useState("");
   const [newField, setNewField] = useState("");
+
+  // AI draft generation
+  const [aiTopic, setAiTopic] = useState("");
+  const [aiAudience, setAiAudience] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+
+  const generate = async () => {
+    const topic = aiTopic.trim();
+    if (!topic) {
+      toast.error("Give the AI a topic first.");
+      return;
+    }
+    setAiLoading(true);
+    try {
+      const draft = await generateCourseDraft({
+        topic,
+        audience: aiAudience.trim() || undefined,
+        minutes: durationMinutes,
+      });
+      setTitle(draft.title);
+      setDescription(draft.description);
+      if (draft.category) setCategory(draft.category);
+      if (draft.tags?.length) setTags((prev) => Array.from(new Set([...prev, ...draft.tags])));
+      if (draft.durationMinutes) setDurationMinutes(draft.durationMinutes);
+      setSections(
+        draft.sections.length
+          ? draft.sections.map((s) => ({
+              key: uid(),
+              title: s.title,
+              kind: "text" as SectionKind,
+              body: s.body,
+              media_url: null,
+              embed_url: null,
+              duration_seconds: null,
+            }))
+          : [newSection()],
+      );
+      setQuestions((draft.questions ?? []).map(mapGeneratedQuestion));
+      toast.success("Draft generated — review and edit before publishing.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Generation failed.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   // Built-in options merged with any custom ones the author has chosen.
   const categoryOptions = useMemo(
@@ -339,6 +404,34 @@ export default function CourseEditor() {
           Share something you know. Keep it short — the goal is upskilling, not exams.
         </p>
       </div>
+
+      {/* ── AI draft generator ──────────────────────────── */}
+      <Card className="p-5 bg-gradient-to-br from-primary/10 to-fuchsia-500/5 border-primary/20 space-y-3">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-primary" />
+          <h3 className="font-display font-semibold text-foreground">Draft with AI</h3>
+        </div>
+        <p className="text-xs text-muted-foreground -mt-1">
+          Describe a topic and the AI will draft sections and a quiz. It overwrites the fields below — review everything before publishing.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Input
+            value={aiTopic}
+            onChange={(e) => setAiTopic(e.target.value)}
+            placeholder="Topic, e.g. Writing a tight design critique"
+            onKeyDown={(e) => e.key === "Enter" && !aiLoading && (e.preventDefault(), generate())}
+          />
+          <Input
+            value={aiAudience}
+            onChange={(e) => setAiAudience(e.target.value)}
+            placeholder="Audience (optional), e.g. junior designers"
+          />
+        </div>
+        <Button type="button" onClick={generate} disabled={aiLoading} className="rounded-xl">
+          {aiLoading ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Sparkles className="w-4 h-4 mr-1.5" />}
+          {aiLoading ? "Generating…" : "Generate draft"}
+        </Button>
+      </Card>
 
       {/* ── Course meta ─────────────────────────────────── */}
       <Card className="p-5 bg-card/60 border-border/30 space-y-4">
