@@ -358,8 +358,8 @@ export default function AirwavesPod() {
         </button>
 
         <Card className="p-5 bg-card/60 border-border/30 rounded-2xl flex items-start gap-4">
-          <div className="w-16 h-16 rounded-xl overflow-hidden bg-gradient-to-br from-rose-500/20 to-red-500/10 flex items-center justify-center shrink-0">
-            {selectedShow.cover_url ? <img src={selectedShow.cover_url} alt={selectedShow.title} className="w-full h-full object-cover" /> : <Podcast className="w-7 h-7 text-rose-300" />}
+          <div className="w-20 h-20 rounded-xl overflow-hidden bg-gradient-to-br from-rose-500/20 to-red-500/10 flex items-center justify-center shrink-0">
+            {selectedShow.cover_url ? <img src={selectedShow.cover_url} alt={selectedShow.title} className="w-full h-full object-cover object-top" /> : <Podcast className="w-8 h-8 text-rose-300" />}
           </div>
           <div className="min-w-0 flex-1">
             <h2 className="font-display text-xl font-bold text-foreground truncate">{selectedShow.title}</h2>
@@ -476,8 +476,8 @@ export default function AirwavesPod() {
               onClick={() => setSelectedShowId(s.id)}
               className="overflow-hidden border-border/30 bg-card/60 cursor-pointer hover:-translate-y-1 hover:shadow-xl hover:shadow-black/20 transition-all duration-300"
             >
-              <div className="h-28 bg-gradient-to-br from-rose-500/20 to-red-500/10 flex items-center justify-center">
-                {s.cover_url ? <img src={s.cover_url} alt={s.title} className="w-full h-full object-cover" /> : <Podcast className="w-9 h-9 text-rose-300/60" />}
+              <div className="h-56 bg-gradient-to-br from-rose-500/20 to-red-500/10 flex items-center justify-center">
+                {s.cover_url ? <img src={s.cover_url} alt={s.title} className="w-full h-full object-cover object-top" /> : <Podcast className="w-10 h-10 text-rose-300/60" />}
               </div>
               <div className="p-4">
                 <h3 className="font-display font-semibold text-foreground truncate">{s.title}</h3>
