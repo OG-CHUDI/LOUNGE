@@ -50,8 +50,8 @@ const PAGE_TITLES: Record<string, string> = {
   "/focus": "Focus Lounge",
   "/airwaves": "Airwaves Lounge",
   "/airwaves/voice-notes": "Voice Notes",
-  "/airwaves/soundboard": "Soundboard",
-  "/airwaves/name-tags": "Name Tags",
+  "/airwaves/pod": "The Pod",
+  "/airwaves/rooms": "Drop-in Rooms",
 };
 
 function getLoungeFromPath(pathname: string): string | null {

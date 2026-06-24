@@ -67,65 +67,6 @@ DROP POLICY IF EXISTS "Users can delete own voice note comments" ON voice_note_c
 CREATE POLICY "Users can delete own voice note comments" ON voice_note_comments FOR DELETE USING (auth.uid() = user_id);
 
 -- ────────────────────────────────────────────────────────────
--- SOUNDBOARD — short shareable clips
--- ────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS soundboard_clips (
-  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  author_id  uuid NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  label      text NOT NULL,
-  audio_url  text NOT NULL,
-  plays      integer DEFAULT 0,
-  created_at timestamptz DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS soundboard_clips_created_idx ON soundboard_clips (created_at DESC);
-
-ALTER TABLE soundboard_clips ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Anyone can read soundboard clips" ON soundboard_clips;
-CREATE POLICY "Anyone can read soundboard clips" ON soundboard_clips FOR SELECT USING (true);
-
-DROP POLICY IF EXISTS "Users can add soundboard clips" ON soundboard_clips;
-CREATE POLICY "Users can add soundboard clips" ON soundboard_clips FOR INSERT WITH CHECK (auth.uid() = author_id);
-
-DROP POLICY IF EXISTS "Users can delete own soundboard clips" ON soundboard_clips;
-CREATE POLICY "Users can delete own soundboard clips" ON soundboard_clips FOR DELETE USING (auth.uid() = author_id);
-
--- Anyone can bump the play count (without being able to edit the clip itself).
-CREATE OR REPLACE FUNCTION increment_soundboard_play(clip uuid)
-RETURNS void
-LANGUAGE sql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  UPDATE soundboard_clips SET plays = plays + 1 WHERE id = clip;
-$$;
-GRANT EXECUTE ON FUNCTION increment_soundboard_play(uuid) TO authenticated;
-
--- ────────────────────────────────────────────────────────────
--- NAME TAGS — "how to say my name" (one per person)
--- ────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS name_tags (
-  user_id    uuid PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
-  audio_url  text NOT NULL,
-  note       text,
-  updated_at timestamptz DEFAULT now()
-);
-
-ALTER TABLE name_tags ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Anyone can read name tags" ON name_tags;
-CREATE POLICY "Anyone can read name tags" ON name_tags FOR SELECT USING (true);
-
-DROP POLICY IF EXISTS "Users can set own name tag" ON name_tags;
-CREATE POLICY "Users can set own name tag" ON name_tags FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-DROP POLICY IF EXISTS "Users can update own name tag" ON name_tags;
-CREATE POLICY "Users can update own name tag" ON name_tags FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
-
-DROP POLICY IF EXISTS "Users can delete own name tag" ON name_tags;
-CREATE POLICY "Users can delete own name tag" ON name_tags FOR DELETE USING (auth.uid() = user_id);
-
--- ────────────────────────────────────────────────────────────
 -- STORAGE — audio for the whole lounge
 -- ────────────────────────────────────────────────────────────
 INSERT INTO storage.buckets (id, name, public)
@@ -148,5 +89,3 @@ CREATE POLICY "Auth update airwaves" ON storage.objects FOR UPDATE
 DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE voice_notes; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE voice_note_reactions; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE voice_note_comments; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE soundboard_clips; EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-DO $$ BEGIN ALTER PUBLICATION supabase_realtime ADD TABLE name_tags; EXCEPTION WHEN duplicate_object THEN NULL; END $$;

@@ -108,7 +108,7 @@ export default function AirwavesVoiceNotes() {
       </div>
 
       {/* Composer */}
-      <Card className="p-4 bg-card/60 border-border/30 rounded-2xl space-y-3">
+      <Card className="p-4 bg-card/60 border-border/30 rounded-2xl space-y-3 max-w-xl">
         <RecorderControls recorder={recorder} maxSeconds={MAX_SECONDS} label="Record a note" />
         {recorder.blob && (
           <div className="flex items-center gap-2">

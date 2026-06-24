@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Mic, AudioLines, BadgeCheck, Headphones, Podcast } from "lucide-react";
+import { Mic, Headphones, Podcast } from "lucide-react";
 
 interface Tile {
   path?: string;
@@ -27,44 +27,24 @@ const TILES: Tile[] = [
     stat: "Record & reply",
   },
   {
-    path: "/airwaves/soundboard",
-    icon: AudioLines,
-    title: "Soundboard",
-    description: "Stingers, catchphrases & in-jokes",
-    color: "from-fuchsia-500/10 to-pink-500/5",
-    iconColor: "text-fuchsia-400",
-    accent: "bg-fuchsia-500/10",
-    stat: "Tap to play",
-  },
-  {
-    path: "/airwaves/name-tags",
-    icon: BadgeCheck,
-    title: "Name Tags",
-    description: "How to say everyone's name",
-    color: "from-teal-500/10 to-emerald-500/5",
-    iconColor: "text-teal-400",
-    accent: "bg-teal-500/10",
-    stat: "Say it right",
-  },
-  {
+    path: "/airwaves/rooms",
     icon: Headphones,
     title: "Drop-in Rooms",
     description: "Live voice rooms — hop in and chat",
     color: "from-amber-500/10 to-orange-500/5",
     iconColor: "text-amber-400",
     accent: "bg-amber-500/10",
-    stat: "Coming soon",
-    soon: true,
+    stat: "Live now",
   },
   {
+    path: "/airwaves/pod",
     icon: Podcast,
     title: "The Pod",
-    description: "The team's episodic audio",
+    description: "Team shows & episodes",
     color: "from-rose-500/10 to-red-500/5",
     iconColor: "text-rose-400",
     accent: "bg-rose-500/10",
-    stat: "Coming soon",
-    soon: true,
+    stat: "Listen & publish",
   },
 ];
 

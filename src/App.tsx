@@ -27,8 +27,8 @@ import LearnAma from "@/pages/LearnAma";
 import Focus from "@/pages/Focus";
 import Airwaves from "@/pages/Airwaves";
 import AirwavesVoiceNotes from "@/pages/AirwavesVoiceNotes";
-import AirwavesSoundboard from "@/pages/AirwavesSoundboard";
-import AirwavesNameTags from "@/pages/AirwavesNameTags";
+import AirwavesPod from "@/pages/AirwavesPod";
+import AirwavesRooms from "@/pages/AirwavesRooms";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -98,8 +98,8 @@ function AppRoutes() {
         <Route path="focus" element={<Focus />} />
         <Route path="airwaves" element={<Airwaves />} />
         <Route path="airwaves/voice-notes" element={<AirwavesVoiceNotes />} />
-        <Route path="airwaves/soundboard" element={<AirwavesSoundboard />} />
-        <Route path="airwaves/name-tags" element={<AirwavesNameTags />} />
+        <Route path="airwaves/pod" element={<AirwavesPod />} />
+        <Route path="airwaves/rooms" element={<AirwavesRooms />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>

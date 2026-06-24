@@ -14,10 +14,16 @@ export default function AudioPlayer({
   src,
   durationSeconds,
   onPlay,
+  startAt,
+  onProgress,
 }: {
   src: string;
   durationSeconds?: number | null;
   onPlay?: () => void;
+  /** Resume playback from this position (seconds). */
+  startAt?: number | null;
+  /** Reports the current position on pause/ended (seconds). */
+  onProgress?: (seconds: number) => void;
 }) {
   const ref = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
@@ -65,15 +71,23 @@ export default function AudioPlayer({
         src={src}
         preload="metadata"
         onPlay={() => setPlaying(true)}
-        onPause={() => setPlaying(false)}
+        onPause={(e) => {
+          setPlaying(false);
+          onProgress?.(e.currentTarget.currentTime);
+        }}
         onEnded={() => {
           setPlaying(false);
           setCurrent(0);
+          onProgress?.(0);
         }}
         onTimeUpdate={(e) => setCurrent(e.currentTarget.currentTime)}
         onLoadedMetadata={(e) => {
           const d = e.currentTarget.duration;
           setLoaded(Number.isFinite(d) ? d : null);
+          if (startAt && startAt > 1 && (!Number.isFinite(d) || startAt < d)) {
+            e.currentTarget.currentTime = startAt;
+            setCurrent(startAt);
+          }
         }}
         className="hidden"
       />
