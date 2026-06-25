@@ -112,7 +112,7 @@ export default function LearnCourses() {
                 {/* Cover */}
                 <div className="h-36 bg-gradient-to-br from-teal-500/20 to-cyan-500/10 flex items-center justify-center relative overflow-hidden">
                   {course.cover_url ? (
-                    <img src={course.cover_url} alt={course.title} className="w-full h-full object-cover" />
+                    <img src={course.cover_url} alt={course.title} className="w-full h-full object-contain" />
                   ) : (
                     <BookOpen className="w-10 h-10 text-teal-400/40" />
                   )}
