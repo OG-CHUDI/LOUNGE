@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Mic, Headphones, Podcast } from "lucide-react";
+import { Mic, Headphones, Podcast, Drama, Layers } from "lucide-react";
 
 interface Tile {
   path?: string;
@@ -45,6 +45,26 @@ const TILES: Tile[] = [
     iconColor: "text-rose-400",
     accent: "bg-rose-500/10",
     stat: "Listen & publish",
+  },
+  {
+    path: "/airwaves/charades",
+    icon: Drama,
+    title: "Audio Charades",
+    description: "Describe a word out loud — the team guesses",
+    color: "from-fuchsia-500/10 to-purple-500/5",
+    iconColor: "text-fuchsia-400",
+    accent: "bg-fuchsia-500/10",
+    stat: "Guess to win",
+  },
+  {
+    path: "/airwaves/open-verse",
+    icon: Layers,
+    title: "Open Verse",
+    description: "Build a track together, one line at a time",
+    color: "from-teal-500/10 to-emerald-500/5",
+    iconColor: "text-teal-400",
+    accent: "bg-teal-500/10",
+    stat: "Add a line",
   },
 ];
 

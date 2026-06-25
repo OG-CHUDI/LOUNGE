@@ -52,6 +52,8 @@ const PAGE_TITLES: Record<string, string> = {
   "/airwaves/voice-notes": "Voice Notes",
   "/airwaves/pod": "The Pod",
   "/airwaves/rooms": "Drop-in Rooms",
+  "/airwaves/charades": "Audio Charades",
+  "/airwaves/open-verse": "Open Verse",
 };
 
 function getLoungeFromPath(pathname: string): string | null {

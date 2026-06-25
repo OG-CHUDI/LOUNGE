@@ -29,6 +29,8 @@ import Airwaves from "@/pages/Airwaves";
 import AirwavesVoiceNotes from "@/pages/AirwavesVoiceNotes";
 import AirwavesPod from "@/pages/AirwavesPod";
 import AirwavesRooms from "@/pages/AirwavesRooms";
+import AirwavesCharades from "@/pages/AirwavesCharades";
+import AirwavesOpenVerse from "@/pages/AirwavesOpenVerse";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -100,6 +102,8 @@ function AppRoutes() {
         <Route path="airwaves/voice-notes" element={<AirwavesVoiceNotes />} />
         <Route path="airwaves/pod" element={<AirwavesPod />} />
         <Route path="airwaves/rooms" element={<AirwavesRooms />} />
+        <Route path="airwaves/charades" element={<AirwavesCharades />} />
+        <Route path="airwaves/open-verse" element={<AirwavesOpenVerse />} />
         <Route path="*" element={<NotFound />} />
       </Route>
     </Routes>
